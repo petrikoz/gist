@@ -45,6 +45,17 @@ chmod u+x github-ssh-import-id.py
 python3 ssh-import-id.py USERNAME USERNAME_1 USERNAME_2
 ```
 
+## google-spreadsheet-to-json.py
+
+Convert public (should be available for read via link) Google Spreadsheet to JSON
+
+```shell
+whet https://raw.githubusercontent.com/petrikoz/gist/master/google-spreadsheet-to-json.py
+pip install httpx
+chmod u+x google-spreadsheet-to-json.py
+python3 google-spreadsheet-to-json.py 'SPREADSHEET-ID-FROM-ITS-LINK'
+```
+
 ## netangels-hosting-reload-rq.sh
 
 Add support [Django RQ](https://github.com/rq/django-rq) to [uWSGI reload](https://uwsgi-docs-additions.readthedocs.io/en/latest/Options.html#touch-reload) on [NetAngels hosting](https://www.netangels.ru/hosting/).
