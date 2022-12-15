@@ -99,8 +99,8 @@ server {
   listen       443  http2 ssl  default_server;
   server_name  .PROJECT.DOMAIN;
 
-  include      enable/acme.conf;
-  include      enable/ssl.conf;
+  include  snippets/acme.conf;
+  include  snippets/ssl.conf;
 
   ssl_certificate      ssl/PROJECT.DOMAIN/PROJECT_DOMAIN.full.crt;
   ssl_certificate_key  ssl/PROJECT.DOMAIN/PROJECT_DOMAIN.key;
@@ -123,7 +123,8 @@ server {
 
   root  \$src;
 
-  location ~ ^/(media|static) {}
+  location  ~  ^/media/(uploads|_versions) {}
+  location  /static {}
 
   #set  \$favicon  \$src/static/img/favicon;
   #location  ~  ^/(apple-touch-icon\.png|browserconfig\.xml|safari-pinned-tab\.svg|site\.webmanifest)$ {
@@ -136,19 +137,23 @@ server {
   #  root  \$src/media/uploads/seo;
   #}
 
+  client_max_body_size  10M;
+
   # Django
   location ~ ^/(admin|rest) {
-    include             params/uwsgi.conf;
+    include  uwsgi_params;
 
-    uwsgi_pass          unix://\$root/run/uwsgi.sock;
-    uwsgi_read_timeout  300;
+    uwsgi_read_timeout         300;
+    uwsgi_ignore_client_abort  on
+
+    uwsgi_pass  unix://\$root/run/uwsgi.sock;
   }
 
   # NextJS
   location / {
     proxy_pass  http://127.0.0.1:3000;
     proxy_http_version  1.1;
-    
+
     proxy_set_header  Upgrade     \$http_upgrade;
     proxy_set_header  Connection  "upgrade";
     proxy_set_header  Host        \$host;

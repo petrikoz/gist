@@ -63,6 +63,13 @@ cd /etc/nginx
 mkdir /etc/nginx/ssl
 openssl dhparam -out /etc/nginx/ssl/dhparams.pem 3072
 
+# vi /etc/nginx/nginx.conf
+# change in events {
+worker_connections 4096;
+# add after worker_processes:
+# nproc * 4096
+worker_rlimit_nofile 32678;
+
 cat <<EOT > /etc/nginx/conf.d/server.conf
 server_tokens  off;
 server_name_in_redirect  off;
@@ -85,6 +92,42 @@ geoip2  /etc/nginx/GeoIP/GeoLite2-Country.mmdb {
 }
 
 EOT
+
+# config for issue SSL certificates via acme.sh
+# https://github.com/acmesh-official/acme.sh
+cat <<EOT > /etc/nginx/snippets/acme.conf
+location  /.well-known {
+  root /var/www/html;
+}
+
+EOT
+
+# configure SSL
+# see https://ssl-config.mozilla.org/
+cat <<EOT > /etc/nginx/snippets/ssl.conf
+ssl_session_timeout  1d;
+ssl_session_cache    shared:SSL:10m;  # about 40000 sessions
+ssl_session_tickets  off;
+
+ssl_dhparam  ssl/dhparams.pem;
+
+# intermediate configuration
+ssl_protocols              TLSv1.2  TLSv1.3;
+ssl_ciphers                ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+ssl_prefer_server_ciphers  off;
+
+# HSTS (ngx_http_headers_module is required) (63072000 seconds)
+add_header  Strict-Transport-Security  "max-age=63072000"  always;
+
+# OCSP stapling
+ssl_stapling         on;
+ssl_stapling_verify  on;
+
+resolver  8.8.8.8  1.1.1.1;
+
+EOT
+
+# after all changes
 nginx -t && systemctl restart nginx
 
 # ****************************************************************
