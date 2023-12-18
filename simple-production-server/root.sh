@@ -16,16 +16,10 @@ ln -s /usr/share/vim/addons ~/.vim/after
 # SYSTEM
 
 apt remove -y --purge snapd landscape-common
-apt autoremove -y --purge
+apt install -y figlet update-motd
 apt update && apt upgrade -y
+apt autoremove -y --purge
 shutdown -r now
-apt install -y \
-    figlet \
-    software-properties-common \
-    ufw \
-    unattended-upgrades \
-    update-motd \
-    update-notifier-common
 timedatectl set-timezone Asia/Yekaterinburg
 hostnamectl set-hostname $PROJECT
 echo "127.0.1.1       $PROJECT" >> /etc/hosts
@@ -51,8 +45,11 @@ vi 40-services
 # ****************************************************************
 # NODEJS
 
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-apt install -y nodejs
+apt update && apt install -y ca-certificates curl gnupg
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+# проверить текущую LTS версию на https://nodejs.org/
+NODE_MAJOR=20; echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+apt update && apt install -y nodejs
 npm install -g npm@latest pm2@latest
 
 # ****************************************************************
@@ -148,15 +145,15 @@ vi config.ini
 # ****************************************************************
 # POSTGRESQL
 
-echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/postgresql.list
-wget -qO - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-apt update && apt install -y postgresql
+apt install -y postgresql-common
+/usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+apt update && apt install -y postgresql libpq-dev
 
 # ****************************************************************
 # PYTHON
 
 apt install -y python3-pip
-pip3 install -U pip setuptools wheel
+pip3 install -U pip setuptools
 
 # ****************************************************************
 # REDIS
@@ -252,6 +249,9 @@ EOT
 mkdir -m 700 /home/web/.ssh
 cp -r /root/.ssh/authorized_keys /home/web/.ssh
 chown -R web:web /home/web/.ssh
+
+# правим права доступа к домашней директории
+chmod a+rx /home/web
 
 # логин под созданным пользователем
 sudo -iu web
