@@ -128,21 +128,6 @@ EOT
 nginx -t && systemctl restart nginx
 
 # ****************************************************************
-# NetAngels's SSL
-
-git clone https://gist.github.com/c696073e978c7e9dc6dbdacd5bd30571.git ~/ssl-renew
-pip install psutil httpx
-chmod 640 ~/ssl-renew
-cd ~/ssl-renew
-chmod u+x netangels-ssl-renew.py
-# добавляем в конфиг нужные значения
-vi config.ini
-# первый запуск вручную
-/usr/bin/env /root/ssl-renew/netangels-ssl-renew.py > /root/ssl-renew/log 2>&1
-# если всё нормально, то добавим запуск по расписанию
-(crontab -l ; echo "43 2 * * *    /usr/bin/env /root/ssl-renew/netangels-ssl-renew.py > /root/ssl-renew/log 2>&1") | sort - | uniq - | crontab -
-
-# ****************************************************************
 # POSTGRESQL
 
 apt install -y postgresql-common
@@ -221,44 +206,59 @@ ufw enable
 systemctl start ufw
 
 # ****************************************************************
+# NetAngels's SSL
+
+git clone https://gist.github.com/c696073e978c7e9dc6dbdacd5bd30571.git ~/ssl-renew
+apt install -y python3-httpx python3-psutil
+chmod 640 ~/ssl-renew
+cd ~/ssl-renew
+chmod u+x netangels-ssl-renew.py
+# добавляем в конфиг нужные значения
+vi config.ini
+# первый запуск вручную
+/usr/bin/env /root/ssl-renew/netangels-ssl-renew.py > /root/ssl-renew/log 2>&1
+# если всё нормально, то добавим запуск по расписанию
+(crontab -l ; echo "43 2 * * *    /usr/bin/env /root/ssl-renew/netangels-ssl-renew.py > /root/ssl-renew/log 2>&1") | sort - | uniq - | crontab -
+
+# ****************************************************************
 # USER
 
 # создаём пользователя для проектов
-useradd -md /home/web -s /bin/bash web
-usermod -aG sudo web
+useradd -md /home/PROJECT -s /bin/bash PROJECT
+usermod -aG docker PROJECT
 
 # опционально добавляем пароль к пользователю
-passwd web
+passwd PROJECT
 
 # логи для проектов
-cat <<EOT > /etc/logrotate.d/web
-/home/web/*/log/*.log {
-    create 644 web web
+cat <<EOT > /etc/logrotate.d/PROJECT
+/home/PROJECT/log/*.log {
+    create 644 PROJECT PROJECT
     compress
     copytruncate
     daily
     dateext
     rotate 3
     size 1M
-    su web web
+    su PROJECT PROJECT
 }
 
 EOT
 
 # копируем свои ключи в нового пользователя
-mkdir -m 700 /home/web/.ssh
-cp -r /root/.ssh/authorized_keys /home/web/.ssh
-chown -R web:web /home/web/.ssh
+mkdir -m 700 /home/PROJECT/.ssh
+cp -r /root/.ssh/authorized_keys /home/PROJECT/.ssh
+chown -R PROJECT:PROJECT /home/PROJECT/.ssh
 
 # правим права доступа к домашней директории
-chmod a+rx /home/web
+chmod a+rx /home/PROJECT
 
 # логин под созданным пользователем
-sudo -iu web
+sudo -iu PROJECT
 
 # добавляем SSH-ключи с GitHub'а
 whet https://gist.githubusercontent.com/petrikoz/7a2e1457bbf4708369c660346e5c0038/raw/e0bf728f06b22c1ec062258a8c09039f84f6c3f2/ssh-import-id.py
-pip install httpx
+pip install --user --break-system-packages httpx
 chmod u+x ssh-import-id.py
 python3 ssh-import-id.py USERNAME USERNAME_1 USERNAME_2
 
@@ -266,7 +266,7 @@ python3 ssh-import-id.py USERNAME USERNAME_1 USERNAME_2
 sed -i 's/\]\\u@\\h/\]\\u\\\[\\033\[00m\\\]@\\\[\\033\[33;1m\\\]\\h/g' ~/.bashrc
 
 # устанавляиваем зависимости
-pip install --user virtualenvwrapper
+pip install --user --break-system-packages virtualenvwrapper
 
 # конфиг BASH'а
 cat <<EOT >> ~/.bashrc

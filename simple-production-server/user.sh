@@ -1,23 +1,19 @@
 # ****************************************************************
 # PROJECT
 
-mkdir -p \
-    ~/$PROJECT/etc \
-    ~/$PROJECT/log \
-    ~/$PROJECT/run
-git clone git@github.com:ITCase/$PROJECT.git ~/$PROJECT/src
+mkdir -p ~/etc ~/log ~/run ~/tmp
 
-mkvirtualenv -a ~/$PROJECT/src $PROJECT
-pip install -U pip setuptools wheel
-pip install -r requirements-itcase.txt
-pip install -r requirements.txt
+git clone git@github.com:ITCase/PROJECT.git ~/$HOME/src
 
-cp default/prod.local.py settings/local.py
+mkvirtualenv -a ~/$HOME/src $USER
+pip install poetry
+poetry install --no-root --without=dev,test
+
+cp production/local.py settings/local.py
 vi settings/local.py
     # change data
 
-./manage.py collectstatic --clear --no-input
-git reset --hard
+./manage.py collectstatic --no-input
 
 # ****************************************************************
 # POSTGRESQL
@@ -25,9 +21,9 @@ git reset --hard
 # добавляем пользователя и базу для проекта
 sudo -u postgres psql
     # run:
-    #     CREATE USER $PROJECT WITH PASSWORD '$PASSWORD';
-    #     CREATE DATABASE $PROJECT WITH OWNER $PROJECT;
-    #     GRANT ALL ON DATABASE $PROJECT TO $PROJECT;
+    #     CREATE USER PROJECT WITH PASSWORD 'PASSWORD';
+    #     CREATE DATABASE PROJECT WITH OWNER PROJECT;
+    #     GRANT ALL ON DATABASE PROJECT TO PROJECT;
 ./manage.py showmigrations
 ./manage.py migrate
 ./manage.py createsuperuser
@@ -35,41 +31,13 @@ sudo -u postgres psql
 # ****************************************************************
 # SUPERVISOR
 
-# Supervisor используется для пере/запуска RQ при перезагрузке uWSGI-инстанса
-pip install supervisor
-cat <<EOT > ~/$PROJECT/etc/supervisord.ini
-[supervisord]
-logfile = $HOME/PROJECT/log/supervisord.log
-logfile_maxbytes = 1MB
-
-[group:PROJECT]
-programs = rqworker
-
-[program:rqworker]
-command = $HOME/.virtualenvs/%(group_name)s/bin/python $HOME/%(group_name)s/src/manage.py %(program_name)s --name %(group_name)s-%(program_name)s-%(process_num)s
-
-numprocs = 2
-process_name = %(group_name)s-%(program_name)s-%(process_num)s
-
-directory = $HOME/%(group_name)s/src
-
-autostart = true
-autorestart = true
-
-; RQ requires the TERM signal to perform a warm shutdown. If RQ does not die
-; within 10 seconds, supervisor will forcefully kill it
-stopsignal = TERM
-
-redirect_stderr = true
-
-EOT
+cp ~/src/production/supervisord.ini ~/etc/supervisord.ini
 
 # ****************************************************************
 # UWSGI
 
-cp ~/$PROJECT/src/default/prod.uwsgi.ini ~/$PROJECT/etc/uwsgi.ini
-sudo ln -s ~/$PROJECT/etc/uwsgi.ini /etc/uwsgi/vassals/$PROJECT.ini
-sudo ln -s ~/$PROJECT/etc/uwsgi-ws.ini /etc/uwsgi/vassals/$PROJECT-ws.ini
+touch ~/etc/uwsgi-reload
+sudo cp ~/src/production/uwsgi.ini /etc/uwsgi/vassals/PROJECT.ini
 
 # ****************************************************************
 # NGINX
@@ -170,15 +138,10 @@ sudo nginx -t && sudo systemctl reload nginx
 # ****************************************************************
 # NextJS
 
-cd $PROJECT/src/nextjs
-npm ci
-npm run build
-pm2 start -i 0 --name "$PROJECT" \
-          --log /home/web/$PROJECT/log/pm2.log --time \
-          --watch --ignore-watch="node_modules" \
-          npm -- start -- --hostname=localhost -p 3000
-pm2 save
-pm2 startup
-sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u web --hp /home/web
-pm2 kill
-sudo systemctl start pm2-web
+ echo GITHUB-TOKEN | docker login ghcr.io --username GITHUB-USER --password-stdin
+docker pull ghcr.io/itcase/PROJECT-web:prod-YYYYMMDD
+docker logout ghcr.io
+docker run -d --restart=always -p 127.0.0.1:3000:3000 --name PROJECT-web-YYYYMMDD ghcr.io/itcase/PROJECT-web:prod-YYYYMMDD
+# если уже есть запщуенный фронт, то делаем так
+docker create --restart=always -p 127.0.0.1:3000:3000 --name PROJECT-web-YYYYMMDD ghcr.io/itcase/PROJECT-web:prod-YYYYMMDD
+docker rm -f PROJECT-web-ПРЕДЫДУЩАЯ_YYYYMMDD && docker start PROJECT-web-YYYYMMDD
