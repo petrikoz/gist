@@ -137,20 +137,20 @@ def deploy_nextjs(context: invoke.context.Context, config: dict):
         _log(f"Нет обновлений Docker-образа {docker_image}")
         return
 
+    _log(f"Останавливаем старый Docker-контейнер {config['DOCKER_CONTAINER_NAME']}")
+    context.run(f"docker rm --force {config['DOCKER_CONTAINER_NAME']}")
+
     _log(
-        f"Создаём обновлённый Docker-контейнер {config['GHCR_IMAGE_NAME']}"
+        f"Запускаем обновлённый Docker-контейнер {config['DOCKER_CONTAINER_NAME']}"
         f" на порту {config['DOCKER_CONTAINER_HOST_PORT']}"
     )
     context.run(
-        f"docker create -p 127.0.0.1:{config['DOCKER_CONTAINER_HOST_PORT']}:3000"
-        f" --name={config['GHCR_IMAGE_NAME']} --restart=always --quiet {docker_image}"
+        f"docker run -d -p 127.0.0.1:{config['DOCKER_CONTAINER_HOST_PORT']}:3000"
+        f" --name={config['DOCKER_CONTAINER_NAME']} --restart=always --quiet {docker_image}"
     )
 
-    _log(f"Останавливаем старый Docker-контейнер {config['GHCR_IMAGE_NAME']}")
-    context.run(f"docker rm --force {config['GHCR_IMAGE_NAME']}", warn=True)
-
-    _log(f"Запускаем обновлённый Docker-контейнер {config['GHCR_IMAGE_NAME']}")
-    context.run(f"docker start {config['GHCR_IMAGE_NAME']}")
+    _log("Удаляем ненужные Docker-образы")
+    context.run("docker image prune --force", warn=True)
 
     _log("NextJS-код: готово!")
     return True
