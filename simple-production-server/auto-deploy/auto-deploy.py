@@ -19,7 +19,7 @@ BASE_DIR = FILE.parent
 # GIT
 
 
-GITHUB_ERRORS_SKIP = ("closed by remote host", "Connection reset", "net/http")
+GITHUB_ERRORS_SKIP = ("closed by remote host", "Connection reset", "Error response from daemon", "net/http")
 
 
 def _git_get_branch(context: invoke.context.Context, remote: str):
@@ -116,7 +116,10 @@ def deploy_nextjs(context: invoke.context.Context, config: dict):
     ).lower()
 
     docker_image_digest = ""
-    res = context.run("docker inspect --format='{{index .RepoDigests 0}}' %s" % docker_image, warn=True)
+    res = context.run(
+        "docker inspect --format='{{index .RepoDigests 0}}' %s" % docker_image,
+        warn=True,
+    )
     if res.exited == 0:
         try:
             docker_image_digest = res.stdout.split("@")[1]
@@ -276,11 +279,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-c", "--config", default=DEFAULT_CONFIG_FILE, help=f'Путь к конфигу. По-умолчанию: "{DEFAULT_CONFIG_FILE}"'
+        "-c",
+        "--config",
+        default=DEFAULT_CONFIG_FILE,
+        help=f'Путь к конфигу. По-умолчанию: "{DEFAULT_CONFIG_FILE}"',
     )
     parser.add_argument("-d", "--debug", action="store_true")
     parser.add_argument(
-        "-l", "--log", default=DEFAULT_LOG_FILE, help=f'Путь к файлу лога. По-умолчанию: "{DEFAULT_LOG_FILE}"'
+        "-l",
+        "--log",
+        default=DEFAULT_LOG_FILE,
+        help=f'Путь к файлу лога. По-умолчанию: "{DEFAULT_LOG_FILE}"',
     )
 
     args = parser.parse_args()
