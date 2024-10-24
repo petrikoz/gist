@@ -19,7 +19,13 @@ BASE_DIR = FILE.parent
 # GIT
 
 
-GITHUB_ERRORS_SKIP = ("closed by remote host", "Connection reset", "Error response from daemon", "net/http")
+GITHUB_ERRORS_SKIP = (
+    "closed by remote host",
+    "Connection reset",
+    "Error response from daemon",
+    "net/http",
+    "Could not read from remote repository",
+)
 
 
 def _git_get_branch(context: invoke.context.Context, remote: str):
