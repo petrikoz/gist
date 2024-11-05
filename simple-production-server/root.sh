@@ -21,8 +21,8 @@ apt update && apt upgrade -y
 apt autoremove -y --purge
 shutdown -r now
 timedatectl set-timezone Asia/Yekaterinburg
-hostnamectl set-hostname $PROJECT
-echo "127.0.1.1       $PROJECT" >> /etc/hosts
+hostnamectl set-hostname PROJECT
+echo "127.0.1.1       PROJECT" >> /etc/hosts
 cd /etc/update-motd.d
 chmod -x \
     00-header \
@@ -41,6 +41,23 @@ chmod +x \
 vi 40-services
     # replace 'services=(...)'
     # with 'services=("nginx" "postgresql" "redis" "ufw" "unattended-upgrades" "uwsgi")'
+
+# ****************************************************************
+# SYSTEMD
+# максимальный размер логов на диске
+sed -i "/^#SystemMaxUse=/c\SystemMaxUse=300M" /etc/systemd/journald.conf
+# сколько место гарантировано должно быть свободным
+sed -i "/^#SystemKeepFree=/c\SystemKeepFree=1G" /etc/systemd/journald.conf
+# максимальный срок хранения логов
+sed -i "/^#MaxRetentionSec=/c\MaxRetentionSec=1month" /etc/systemd/journald.conf
+# максимальное время перед созданием нового файла
+sed -i "/^#MaxFileSec=1month/c\MaxFileSec=1week" /etc/systemd/journald.conf
+# применяем новые настройки
+systemctl restart systemd-journald
+# удаляем логи старше срока, заданного в MaxRetentionSec
+journalctl --vacuum-time=1month
+# удаляем логи тяжлелее размера, заданного в SystemMaxUse
+journalctl --vacuum-size=300M
 
 # ****************************************************************
 # NODEJS
@@ -220,7 +237,7 @@ vi config.ini
 # если всё нормально, то добавим запуск по расписанию
 (crontab -l ; echo "43 2 * * *    /usr/bin/env /root/ssl-renew/netangels-ssl-renew.py > /root/ssl-renew/log 2>&1") | sort - | uniq - | crontab -
 
-# ****************************************************************
+# ********************************************************************************************************************************
 # USER
 
 # создаём пользователя для проектов
