@@ -20,11 +20,13 @@ BASE_DIR = FILE.parent
 
 
 GITHUB_ERRORS_SKIP = (
+    # git
     "closed by remote host",
     "Connection reset",
+    "Could not read from remote repository",
+    # docker
     "Error response from daemon",
     "net/http",
-    "Could not read from remote repository",
 )
 
 
@@ -81,15 +83,15 @@ def deploy_django(context: invoke.context.Context, config: dict):
         _log("Получаем изменения")
         context.run(f"git pull {git_remote} {git_branch}")
 
-        poetry = config["POETRY"]
-        _log("Устанавливаем зависимости")
-        context.run(f"{poetry} install --no-root --without=dev,itcase,test")
-
-        venv_python = config["VENV_PYTHON"]
-        _log("Накатываем миграции на БД")
-        context.run(f"{venv_python} manage.py migrate")
-        _log("Копируем статику")
-        context.run(f"{venv_python} manage.py collectstatic --noinput")
+        venv_activate = config["VENV_ACTIVATE"]
+        with context.prefix(f"source {venv_activate}"):
+            poetry = config["POETRY"]
+            _log("Устанавливаем зависимости")
+            context.run(f"{poetry} install --no-root --without=dev,itcase,test")
+            _log("Накатываем миграции на БД")
+            context.run("python manage.py migrate")
+            _log("Копируем статику")
+            context.run("python manage.py collectstatic --noinput")
 
         _log("Перезагружаем uWSGI")
         Path(config["UWSGI_TOUCH"]).touch()
@@ -285,17 +287,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "-c",
-        "--config",
-        default=DEFAULT_CONFIG_FILE,
-        help=f'Путь к конфигу. По-умолчанию: "{DEFAULT_CONFIG_FILE}"',
+        "-c", "--config", default=DEFAULT_CONFIG_FILE, help=f'Путь к конфигу. По-умолчанию: "{DEFAULT_CONFIG_FILE}"'
     )
     parser.add_argument("-d", "--debug", action="store_true")
     parser.add_argument(
-        "-l",
-        "--log",
-        default=DEFAULT_LOG_FILE,
-        help=f'Путь к файлу лога. По-умолчанию: "{DEFAULT_LOG_FILE}"',
+        "-l", "--log", default=DEFAULT_LOG_FILE, help=f'Путь к файлу лога. По-умолчанию: "{DEFAULT_LOG_FILE}"'
     )
 
     args = parser.parse_args()
