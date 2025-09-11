@@ -3,10 +3,8 @@
 
 mkdir -p ~/etc ~/log ~/run ~/tmp
 
-git clone git@github.com:ITCase/PROJECT.git ~/$HOME/src
+git clone git@github.com:ITCase/PROJECT.git ~/src
 
-mkvirtualenv -a ~/$HOME/src $USER
-pip install poetry
 poetry install --no-root --without=dev,test
 
 cp production/local.py settings/local.py

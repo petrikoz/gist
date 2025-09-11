@@ -67,7 +67,6 @@ curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dea
 # проверить текущую LTS версию на https://nodejs.org/
 NODE_MAJOR=20; echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 apt update && apt install -y nodejs
-npm install -g npm@latest pm2@latest
 
 # ****************************************************************
 # NGINX
@@ -154,8 +153,7 @@ apt update && apt install -y postgresql libpq-dev
 # ****************************************************************
 # PYTHON
 
-apt install -y python3-pip
-pip3 install -U pip setuptools
+apt install -y python3-venv python3-dev
 
 # ****************************************************************
 # REDIS
@@ -282,8 +280,12 @@ python3 ssh-import-id.py USERNAME USERNAME_1 USERNAME_2
 # подкрашиваем: @ — белым, hostname — жёлтым
 sed -i 's/\]\\u@\\h/\]\\u\\\[\\033\[00m\\\]@\\\[\\033\[33;1m\\\]\\h/g' ~/.bashrc
 
-# устанавляиваем зависимости
-pip install --user --break-system-packages virtualenvwrapper
+# устанавляиваем Poetry
+python3 -m venv ~/.virtualenvs/$USER
+~/.virtualenvs/$USER/bin/pip install -U pip setuptools
+~/.virtualenvs/$USER/bin/pip completion --bash >> ~/.bash_completion
+~/.virtualenvs/$USER/bin/pip install poetry
+~/.virtualenvs/$USER/bin/poetry completions bash >> ~/.bash_completion
 
 # конфиг BASH'а
 cat <<EOT >> ~/.bashrc
@@ -304,21 +306,10 @@ alias md='mkdir -p'
 alias ll='ls -hl'
 
 ################################################################
-# Completion
+# Python's Virtual Environment
 ################################################################
 
-#== Package installer for Python
-_pip_completion()
-{
-    COMPREPLY=( \$( COMP_WORDS="\${COMP_WORDS[*]}" \\
-                   COMP_CWORD=\$COMP_CWORD \\
-                   PIP_AUTO_COMPLETE=1 \$1 ) )
-}
-complete -o default -F _pip_completion pip
-
-#== Pyhton virtualenv wrapper
-export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
-source \$HOME/.local/bin/virtualenvwrapper.sh
+source "\$HOME/.virtualenvs/\$USER/bin/activate" && cd "\$HOME/src"
 
 EOT
 
