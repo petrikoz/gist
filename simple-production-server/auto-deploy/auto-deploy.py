@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 #
-# Copyright 2024 ITCase (info@itcase.pro)
+# Copyright 2025 ITCase (info@itcase.pro)
 
 from email.message import EmailMessage
 from pathlib import Path
 import argparse
 import configparser
 import logging
+import signal
 import smtplib
 
 import invoke  # pip install invoke
@@ -249,6 +250,13 @@ LOCK_FILE = BASE_DIR / "lock"
 
 
 def main(args):
+
+    def timeout_handler(signum, frame):
+        raise Exception(f"Прибили по таймауту через {args.timeout} секунд")
+
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(args.timeout)
+
     log_file = Path(args.log)
 
     try:
@@ -279,19 +287,28 @@ def main(args):
         _send_email_success(config["EMAIL"], log_file.read_text())
 
 
-DEFAULT_CONFIG_FILE = (BASE_DIR / "config.ini").absolute()
-DEFAULT_LOG_FILE = (BASE_DIR / f"{FILE.stem}.log").absolute()
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
+    DEFAULT_CONFIG_FILE = (BASE_DIR / "config.ini").absolute()
     parser.add_argument(
         "-c", "--config", default=DEFAULT_CONFIG_FILE, help=f'Путь к конфигу. По-умолчанию: "{DEFAULT_CONFIG_FILE}"'
     )
+
     parser.add_argument("-d", "--debug", action="store_true")
+
+    DEFAULT_LOG_FILE = (BASE_DIR / f"{FILE.stem}.log").absolute()
     parser.add_argument(
         "-l", "--log", default=DEFAULT_LOG_FILE, help=f'Путь к файлу лога. По-умолчанию: "{DEFAULT_LOG_FILE}"'
+    )
+
+    DEFAULT_TIMEOUT = 5 * 60  # секунды
+    parser.add_argument(
+        "-t",
+        "--timeout",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help=f'Время выполнения скрипта. По-умолчанию: "{DEFAULT_TIMEOUT}"',
     )
 
     args = parser.parse_args()
