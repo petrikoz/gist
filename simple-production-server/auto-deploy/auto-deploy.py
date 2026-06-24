@@ -282,6 +282,8 @@ def main(args):
         exit(1)
     else:
         LOCK_FILE.unlink(missing_ok=True)
+    finally:
+        signal.alarm(0)
 
     if result_django or result_nextjs:
         _log("Отправка письма об успешном деплое", "debug")
