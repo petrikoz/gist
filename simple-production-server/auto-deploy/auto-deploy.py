@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright 2025 ITCase (info@itcase.pro)
+# Copyright 2026 ITCase (info@itcase.pro)
 
 from email.message import EmailMessage
 from pathlib import Path
@@ -62,11 +62,6 @@ def _configure_logger(log_file, log_debug):
 
 def _log(message: str, method="info"):
     getattr(LOGGER, method)(message)
-
-
-def _log_exit(message: str, method="info", code=0):
-    _log(message, method)
-    exit(code)
 
 
 # ****************************************************************
@@ -246,15 +241,19 @@ def _send_email_success(config: dict, body: str):
     return _send_email(config, f'Успешный деплой проекта {config["PROJECT"]}', body)
 
 
+class _TimeoutException(Exception):
+    def __init__(self, timeout: int):
+        super().__init__(f"Прибили по таймауту через {timeout} секунд")
+
+
 LOCK_FILE = BASE_DIR / "lock"
 
 
 def main(args):
+    def _timeout_handler(signum, frame):
+        raise _TimeoutException(args.timeout)
 
-    def timeout_handler(signum, frame):
-        raise Exception(f"Прибили по таймауту через {args.timeout} секунд")
-
-    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.signal(signal.SIGALRM, _timeout_handler)
     signal.alarm(args.timeout)
 
     log_file = Path(args.log)
@@ -271,13 +270,15 @@ def main(args):
             deploy_storybook(context, config["STORYBOOK"])
         except Exception as e:
             _log(str(e), "error")
-    except Exception as e:
-        _log(str(e), "error")
+    except Exception as err:
+        _log(str(err), "error")
         try:
             _log("Отправка письма с ошибками", "debug")
             _send_email_fail(config["EMAIL"], log_file.read_text())
         except Exception as e:
-            _log_exit(str(e), "error", 1)
+            _log(str(e), "error")
+        if isinstance(err, _TimeoutException):
+            LOCK_FILE.unlink(missing_ok=True)
         exit(1)
     else:
         LOCK_FILE.unlink(missing_ok=True)
@@ -314,7 +315,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if LOCK_FILE.exists():
-        _log_exit("Процесс выполняется или завершился с ошибкой", "warning")
+        _log("Процесс выполняется или завершился с ошибкой", "warning")
+        exit(0)
 
     _configure_logger(args.log, args.debug)
 
